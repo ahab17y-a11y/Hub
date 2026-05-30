@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ميلاد سعيد يا دنيتي</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght=300;400;700&family=Reem_Kufi:wght=500&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: #0b0505;
+            overflow-x: hidden;
+            color: #fff;
+        }
+        .romantic-title {
+            font-family: 'Reem Kufi', sans-serif;
+        }
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 0, 0, 0.15);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        .btn-runaway {
+            position: absolute;
+            transition: all 0.2s ease;
+        }
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            animation: confettiFall 3s linear infinite;
+        }
+        @keyframes confettiFall {
+            0% { transform: translateY(-50px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+        .flame {
+            width: 12px;
+            height: 24px;
+            background: linear-gradient(to bottom, #ff9900, #ff3300);
+            border-radius: 50% 50% 20% 20%;
+            animation: flicker 0.1s ease-in-out infinite alternate;
+            box-shadow: 0 0 10px #ff9900;
+            transition: opacity 0.8s ease;
+        }
+        @keyframes flicker {
+            0% { transform: scale(1); opacity: 0.9; }
+            100% { transform: scale(1.1) skewX(2deg); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="relative min-h-screen flex flex-col justify-between">
+
+    <div id="canvas-container"></div>
+    <div id="confetti-wrapper" class="absolute inset-0 pointer-events-none z-50 overflow-hidden"></div>
+
+    <button onclick="openAdminPrompt()" class="absolute top-4 left-4 z-50 text-white/10 hover:text-red-500 transition">
+        <i class="fas fa-lock text-xl"></i>
+    </button>
+
+    <audio id="bg-music" loop src="https://pub-c5e31b5cdafb419a96447da2260174ca.r2.dev/happy_birthday_music.mp3"></audio>
+    <audio id="snd-click" src="https://assets.mixkit.co/active_storage/sfx/2568/2568-84.wav"></audio>
+    <audio id="snd-celebrate" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-84.wav"></audio>
+
+    <main class="flex-grow flex items-center justify-center p-4 z-10">
+        
+        <div id="step-welcome" class="glass-card max-w-md w-full rounded-2xl p-8 text-center hidden">
+            <span id="view-welcome-date" class="text-xs font-bold uppercase bg-red-500/20 text-red-400 px-3 py-1 rounded-full mb-2 inline-block">30 مايو 2026 🗓️</span>
+            <h1 id="view-welcome-title" class="romantic-title text-3xl font-bold text-red-500 mb-4">❤️ أهلاً بكِ يا أميرتي ❤️</h1>
+            <p id="view-welcome-text" class="text-gray-300 mb-6 leading-relaxed">هذا المكان صُنع بحب خصيصاً لكِ في يوم ميلادكِ السعيد والفريد.</p>
+            <div class="bg-black/30 p-4 rounded-xl text-right text-sm text-gray-400 mb-6 max-h-40 overflow-y-auto border border-red-500/10">
+                <p id="view-welcome-terms">مرحباً بكِ في عالمنا الخاص الليلة.<br>1. يُمنع إغلاق الموقع قبل إتمام المفاجأة.<br>2. يجب الإجابة عن الأسئلة بصدق تام.<br>3. الابتسامة إجبارية طوال فترة التجربة 😍.</p>
+            </div>
+            <button onclick="startExperience()" class="w-full bg-gradient-to-r from-red-600 to-rose-700 hover:scale-105 transition py-3 rounded-xl font-bold text-lg shadow-lg shadow-red-600/40">
+                أوافق وأتحمل المسؤولية 😍
+            </button>
+        </div>
+
+        <div id="step-questions" class="glass-card max-w-md w-full rounded-2xl p-8 text-center relative hidden min-h-[360px] flex flex-col justify-between">
+            <div>
+                <span class="text-xs font-bold uppercase bg-red-500/20 text-red-400 px-3 py-1 rounded-full">لعبة الاختيارات والأسئلة 🤔</span>
+                <h2 id="question-text" class="text-2xl font-bold mt-4 mb-8">جاري تحميل السؤال...</h2>
+            </div>
+            
+            <div id="binary-answers" class="relative h-28 flex items-center justify-around w-full">
+                <button onclick="handleAnswer(true)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-3 rounded-xl transition text-lg shadow-lg">نعم</button>
+                <button id="btn-no" onmouseover="runAway()" onclick="handleAnswer(false)" class="bg-red-600 text-white font-bold px-8 py-3 rounded-xl text-lg shadow-lg btn-runaway">لا</button>
+            </div>
+
+            <div id="multiple-answers" class="grid grid-cols-1 gap-3 hidden my-4"></div>
+        </div>
+
+        <div id="step-lovemeter" class="glass-card max-w-md w-full rounded-2xl p-8 text-center hidden">
+            <h2 class="romantic-title text-3xl font-bold text-red-500 mb-6">مقياس نبضات حبكِ لي 💓</h2>
+            <div class="relative pt-1">
+                <div class="flex mb-2 items-center justify-between">
+                    <div><span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-red-600 bg-red-950">النسبة الحالية</span></div>
+                    <div class="text-right"><span id="love-percent-text" class="text-sm font-semibold inline-block text-red-500">0%</span></div>
+                </div>
+                <div class="overflow-hidden h-6 text-xs flex rounded-full bg-red-950">
+                    <div id="love-bar" style="width:0%" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-to-r from-red-500 to-rose-600 transition-all duration-1000 font-bold"></div>
+                </div>
+            </div>
+            <p class="text-xs text-gray-400 mt-4 italic">جاري مواءمة النبضات الشريانية للقلب...</p>
+            <button onclick="goToCakeStage()" class="mt-8 bg-gradient-to-r from-red-600 to-rose-600 text-white font-bold px-8 py-2 rounded-xl transition text-sm shadow-md">الانتقال للمفاجأة الكبرى 🎂</button>
+        </div>
+
+        <div id="step-cake" class="glass-card max-w-xl w-full rounded-2xl p-8 text-center hidden flex flex-col items-center">
+            <span class="text-xs font-bold uppercase bg-red-500/20 text-red-400 px-3 py-1 rounded-full mb-2">لحظة الأمنية وإطفاء الشموع 🎂</span>
+            <h2 id="cake-instruction" class="text-xl font-bold text-gray-200 mb-6">السكين مقفلة! اكتبِ العبارة السرية لفتح السكين وتقطيع الكعكة!</h2>
+            
+            <div id="lock-zone" class="w-full max-w-sm mb-6 transition-all duration-500">
+                <input type="text" id="secret-word-input" oninput="checkSecretWord(this.value)" placeholder="اكتبي العبارة السرية هنا لفتح السكين..." class="w-full bg-black/40 border border-red-500/30 rounded-xl p-3 text-center text-white focus:outline-red-500 text-base font-bold placeholder:text-gray-500">
+                <p id="lock-status" class="text-xs text-red-400 mt-2 font-bold"><i class="fas fa-lock ml-1"></i> السكين مقفلة الآن</p>
+            </div>
+
+            <div id="wish-zone" class="w-full max-w-sm mb-6 hidden transform scale-95 transition-all duration-500">
+                <label class="block text-sm text-rose-400 font-bold mb-2"><i class="fas fa-magic"></i> اغمضي عينيكِ واصنعي أمنية لعامكِ الجديد واكتبيها هنا:</label>
+                <textarea id="user-wish-input" rows="2" placeholder="اكتبي أمنيتكِ السرية هنا..." class="w-full bg-black/50 border-2 border-rose-500/40 rounded-xl p-3 text-center text-white text-sm focus:outline-rose-500 font-medium placeholder:text-gray-600"></textarea>
+                <button id="btn-submit-wish" onclick="confirmWishAndCut()" class="mt-3 w-full bg-gradient-to-r from-rose-600 to-red-600 hover:scale-105 text-white text-sm font-bold py-2 rounded-xl transition shadow-lg shadow-rose-600/30">
+                    ✨ تأكيد الأمنية وإطفاء الشموع ✨
+                </button>
+            </div>
+
+            <div id="interactive-cake" class="relative w-64 h-56 flex flex-col justify-end items-center bg-black/10 rounded-full p-4 mb-6 transition duration-300 pointer-events-none opacity-60">
+                <div id="candles-group" class="flex gap-4 mb-1 z-20">
+                    <div class="w-3 h-12 bg-blue-400 rounded-t relative"><div class="flame absolute -top-5 left-[-4px]"></div></div>
+                    <div class="w-3 h-14 bg-yellow-400 rounded-t relative"><div class="flame absolute -top-5 left-[-4px]"></div></div>
+                    <div class="w-3 h-12 bg-purple-400 rounded-t relative"><div class="flame absolute -top-5 left-[-4px]"></div></div>
+                </div>
+                <div class="w-48 h-12 bg-red-200 rounded-t-xl border-b-4 border-red-300 z-10 flex items-center justify-center text-red-800 font-bold text-xs">🍓 كريمة الفراولة</div>
+                <div class="w-56 h-14 bg-amber-900 rounded-t-md border-b-4 border-amber-950 z-10 flex items-center justify-center text-amber-200 font-bold text-xs">🍫 شوكولاتة فاخرة</div>
+                
+                <div id="cake-knife" class="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 text-5xl text-white opacity-0 transition-all duration-500 z-30 pointer-events-none scale-50">
+                    <i class="fas fa-knife text-red-500 drop-shadow-[0_0_10px_rgba(220,38,38,0.8)]"></i>
+                </div>
+            </div>
+
+            <div id="final-message-zone" class="w-full hidden border-t border-red-500/20 pt-6 mt-2">
+                <h1 class="romantic-title text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-rose-500 to-red-600 animate-pulse mb-4">✨ كل عام وأنتِ بمليار خير يا دنيتي ✨</h1>
+                <p id="view-final-message" class="text-base text-gray-200 leading-relaxed bg-black/40 p-5 rounded-2xl border border-red-500/20 shadow-inner">كل عام وأنتِ النور الذي يضيء أيامي، والعالم الأجمل الذي ألتجئ إليه. أتمنى لكِ عاماً مليئاً بالسعادة والبهجة وتحقيق الأمنيات.</p>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="admin-panel" class="fixed inset-0 bg-black/95 z-50 overflow-y-auto p-4 md:p-8 hidden">
+        <div class="max-w-3xl mx-auto bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-neutral-800 pb-4 mb-6">
+                <h2 class="text-2xl font-bold text-red-500 flex items-center gap-2"><i class="fas fa-cogs"></i> لوحة الإدارة والتحكم الفوري</h2>
+                <button onclick="closeAdmin()" class="bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white px-4 py-2 rounded-xl transition">إغلاق</button>
+            </div>
+
+            <div class="mb-6 bg-rose-950/40 p-4 rounded-xl border border-rose-500/30">
+                <h3 class="font-bold text-rose-400 flex items-center gap-2 text-sm"><i class="fas fa-magic"></i> 💖 الأمنية المستلمة:</h3>
+                <p id="admin-view-wish" class="text-white font-bold bg-black/40 p-3 rounded-lg mt-2 text-sm text-center border border-rose-500/10 italic">لا توجد أمنية بعد...</p>
+            </div>
+
+            <div class="space-y-4 bg-neutral-800/40 p-4 rounded-xl border border-neutral-700">
+                <h3 class="font-bold text-red-400 border-b border-neutral-700 pb-2">1. إعدادات الواجهة والتحكم بكلمة السر</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">عنوان الترحيب</label>
+                        <input type="text" id="cfg-welcome-title" class="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-2 text-white text-sm focus:outline-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">تاريخ الليلة المخصص</label>
+                        <input type="text" id="cfg-welcome-date" class="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-2 text-white text-sm focus:outline-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">🔑 العبارة السرية للسكين</label>
+                        <input type="text" id="cfg-cake-password" class="w-full bg-slate-900 border border-emerald-600/50 rounded-lg p-2 text-white text-sm font-bold focus:outline-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">مقياس نسبة الحب (0 - 100)</label>
+                        <input type="number" id="cfg-love-percent" class="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-2 text-white text-sm focus:outline-red-500">
+                    </div>
+                </div>
+
+                <div class="bg-black/30 p-4 rounded-xl border border-red-500/10 mt-3">
+                    <label class="block text-xs font-bold text-rose-400 mb-2"><i class="fas fa-music"></i> 🎵 اختيار الموسيقى:</label>
+                    <select id="cfg-active-music" class="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-2 text-white text-sm font-bold focus:outline-rose-500">
+                        <option value="https://pub-c5e31b5cdafb419a96447da2260174ca.r2.dev/happy_birthday_music.mp3">🎹 موسيقى عيد ميلاد احتفالية مبهجة</option>
+                        <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3">🎻 موسيقى هادئة كلاسيكية</option>
+                        <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3">💖 موسيقى رومانسية دافئة</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">نص الترحيب</label>
+                    <textarea id="cfg-welcome-text" rows="2" class="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-2 text-white text-sm focus:outline-red-500"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">الشروط والقوانين</label>
+                    <textarea id="cfg-welcome-terms" rows="2" class="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-2 text-white text-sm focus:outline-red-500"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">رسالة المعايدة النهائية</label>
+                    <textarea id="cfg-final-message" rows="3" class="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-2 text-white text-sm focus:outline-red-500"></textarea>
+                </div>
+            </div>
+
+            <div class="mt-6 bg-neutral-800/40 p-4 rounded-xl border border-neutral-700">
+                <h3 class="font-bold text-red-400 border-b border-neutral-700 pb-2 mb-3">2. إدارة أسئلة اللعبة</h3>
+                <div id="admin-questions-list" class="space-y-4 max-h-72 overflow-y-auto mb-4 p-1"></div>
+                <button onclick="addNewQuestionField()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2 rounded-lg transition"><i class="fas fa-plus ml-1"></i> إضافة سؤال جديد للعبة</button>
+            </div>
+
+            <div class="mt-6 border-t border-neutral-800 pt-4 flex justify-end">
+                <button id="btn-main-save" onclick="saveAdminSettings()" class="bg-gradient-to-r from-emerald-500 to-green-600 hover:scale-105 text-white font-bold px-8 py-3 rounded-xl shadow-lg transition">
+                    <i class="fas fa-save ml-2"></i> حفظ جميع التعديلات ومزامنة الموقع
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="w-full text-center p-4 text-xs text-white/10 z-10">
+        صُنع بحب بنبضات قلب رقمية حمراء © 2026
+    </footer>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBVgnHzkZppi0FhpuyVRK_x0XMn4LViTQ0",
+            authDomain: "alfuars-seah-fb320.firebaseapp.com",
+            databaseURL: "https://alfuars-seah-fb320-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "alfuars-seah-fb320",
+            storageBucket: "alfuars-seah-fb320.firebasestorage.app",
+            messagingSenderId: "186976497709",
+            appId: "1:186976497709:web:08220f2dcad4c6180408a4",
+            measurementId: "G-9HPQN41DQB"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        let currentStep = 1;
+        // الأسئلة الافتراضية التي تعود للعمل فوراً
+        const defaultQuestions = {
+            "q_1": { text: "هل تعتقدين أنكِ الشخص الأكثر دلالاً في هذا العالم الليلة؟", type: "binary", options: [] },
+            "q_2": { text: "هل أنتِ جاهزة لاستقبال باقة من المفاجآت والعبارات السرية؟", type: "binary", options: [] },
+            "q_3": { text: "اخترِ الهدية المعنوية الأقرب لقلبكِ الليلة من علي:", type: "multi", options: ["قصيدة شعرية خاصة باسمكِ", "سفرة تفاعلية سياحية مذهلة", "ألبوم يحمل أجمل ذكرياتنا الموثقة"] }
+        };
+
+        let siteData = { 
+            welcomeTitle: "❤️ أهلاً بكِ يا أميرتي ❤️",
+            welcomeDate: "30 مايو 2026 🗓️",
+            welcomeText: "هذا المكان صُنع بحب خصيصاً لكِ في يوم ميلادكِ السعيد والفريد.",
+            welcomeTerms: "مرحباً بكِ في عالمنا الخاص الليلة.\n1. يُمنع إغلاق الموقع قبل إتمام المفاجأة.\n2. يجب الإجابة عن الأسئلة بصدق تام.\n3. الابتسامة إجبارية طوال فترة التجربة 😍.",
+            cakePassword: "احب علي",
+            lovePercent: 100,
+            finalMessage: "كل عام وأنتِ النور الذي يضيء أيامي، والعالم الأجمل الذي ألتجئ إليه. أتمنى لكِ عاماً مليئاً بالسعادة والبهجة وتحقيق الأمنيات.",
+            activeMusic: "https://pub-c5e31b5cdafb419a96447da2260174ca.r2.dev/happy_birthday_music.mp3",
+            questions: defaultQuestions 
+        };
+
+        let currentQuestionIndex = 0;
+        let isKnifeUnlocked = false;
+
+        window.playSound = function(type) {
+            const snd = type === 'click' ? document.getElementById('snd-click') : document.getElementById('snd-celebrate');
+            if(snd) { snd.currentTime = 0; snd.play().catch(e => console.log("Audio feedback ready")); }
+        }
+
+        document.addEventListener('click', function(e) {
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+                playSound('click');
+            }
+        });
+
+        window.startExperience = function() {
+            const music = document.getElementById('bg-music');
+            if(music) { music.volume = 0.6; music.play().catch(e => console.log("Bypass block ready")); }
+            nextStep(2);
+        }
+
+        onValue(ref(db, 'birthday_site'), (snapshot) => {
+            const data = snapshot.val();
+            if(data) {
+                siteData = data;
+                if(!siteData.questions || Object.keys(siteData.questions).length === 0) siteData.questions = defaultQuestions;
+                applyDataToUI();
+            } else {
+                // إذا لم توجد قاعدة البيانات بعد، نرفع القيم الافتراضية المستقرة فوراً لتثبيتها
+                set(ref(db, 'birthday_site'), siteData);
+            }
+        });
+
+        function applyDataToUI() {
+            document.getElementById('view-welcome-date').innerText = siteData.welcomeDate;
+            document.getElementById('view-welcome-title').innerText = siteData.welcomeTitle;
+            document.getElementById('view-welcome-text').innerText = siteData.welcomeText;
+            document.getElementById('view-welcome-terms').innerHTML = (siteData.welcomeTerms || "").replace(/\n/g, '<br>');
+            document.getElementById('view-final-message').innerText = siteData.finalMessage;
+            
+            const musicElement = document.getElementById('bg-music');
+            if(musicElement && musicElement.src !== siteData.activeMusic) {
+                musicElement.src = siteData.activeMusic;
+            }
+
+            if(siteData.user_wish) {
+                document.getElementById('admin-view-wish').innerText = siteData.user_wish;
+            }
+            showStep(currentStep);
+        }
+
+        window.nextStep = function(step) {
+            currentStep = step;
+            showStep(step);
+            if(step === 2) { currentQuestionIndex = 0; loadQuestion(); }
+            if(step === 4) {
+                setTimeout(() => {
+                    const targetPercent = siteData.lovePercent || 100;
+                    document.getElementById('love-bar').style.width = targetPercent + '%';
+                    document.getElementById('love-bar').innerText = targetPercent + '%';
+                    document.getElementById('love-percent-text').innerText = targetPercent + '%';
+                }, 200);
+            }
+        }
+
+        window.goToCakeStage = function() {
+            triggerCelebration();
+            nextStep('cake');
+        }
+
+        function showStep(step) {
+            document.querySelectorAll('main > div').forEach(div => div.classList.add('hidden'));
+            if(step === 1) document.getElementById('step-welcome').classList.remove('hidden');
+            if(step === 2) document.getElementById('step-questions').classList.remove('hidden');
+            if(step === 4) document.getElementById('step-lovemeter').classList.remove('hidden');
+            if(step === 'cake') document.getElementById('step-cake').classList.remove('hidden');
+        }
+
+        function loadQuestion() {
+            const qList = siteData.questions ? Object.values(siteData.questions) : [];
+            if(qList.length === 0 || currentQuestionIndex >= qList.length) { nextStep(4); return; }
+
+            const currentQ = qList[currentQuestionIndex];
+            document.getElementById('question-text').innerText = currentQ.text;
+
+            const binaryArea = document.getElementById('binary-answers');
+            const multiArea = document.getElementById('multiple-answers');
+
+            if(currentQ.type === 'binary') {
+                binaryArea.classList.remove('hidden'); multiArea.classList.add('hidden'); resetNoButton();
+            } else {
+                binaryArea.classList.add('hidden'); multiArea.classList.remove('hidden'); multiArea.innerHTML = "";
+                if(currentQ.options) {
+                    currentQ.options.forEach(opt => {
+                        multiArea.innerHTML += `
+                            <button onclick="handleAnswer(true)" class="w-full bg-white/5 hover:bg-red-600/40 text-right p-3 rounded-xl transition text-sm border border-white/5 flex justify-between items-center group">
+                                <span>${opt}</span> <i class="fas fa-heart text-red-500 opacity-0 group-hover:opacity-100 transition"></i>
+                            </button>`;
+                    });
+                }
+            }
+        }
+
+        window.handleAnswer = function(isCorrect) {
+            if(isCorrect) {
+                triggerCelebration(); currentQuestionIndex++;
+                setTimeout(() => { loadQuestion(); }, 400);
+            } else {
+                runAway();
+            }
+        }
+
+        window.checkSecretWord = function(val) {
+            const requiredPass = (siteData.cakePassword || "احب علي").trim();
+            if(val.trim() === requiredPass) {
+                isKnifeUnlocked = true; playSound('celebrate');
+                document.getElementById('lock-zone').classList.add('hidden');
+                const wishZone = document.getElementById('wish-zone');
+                wishZone.classList.remove('hidden');
+                setTimeout(() => wishZone.classList.remove('scale-95'), 50);
+                
+                document.getElementById('interactive-cake').classList.remove('opacity-60'); 
+                const knife = document.getElementById('cake-knife');
+                knife.classList.remove('opacity-0', 'scale-50'); knife.classList.add('opacity-100', 'scale-100');
+                
+                document.getElementById('cake-instruction').innerText = "تم أخذ السكين بنجاح! اكتبي أمنيتكِ الآن لتتمكني من قطع الكعكة واطفاء الشموع.";
+                triggerCelebration();
+            }
+        }
+
+        window.confirmWishAndCut = async function() {
+            const wishText = document.getElementById('user-wish-input').value.trim();
+            if(!wishText) { alert("الرجاء كتابة أمنيتكِ أولاً قبل إطفاء الشموع! ✨"); return; }
+            
+            const btn = document.getElementById('btn-submit-wish');
+            btn.disabled = true; btn.innerText = "جاري إرسال الأمنية...";
+            
+            try {
+                await update(ref(db, 'birthday_site'), { user_wish: wishText });
+                playSound('celebrate');
+                document.querySelectorAll('.flame').forEach(f => f.style.opacity = '0');
+                triggerCelebration();
+                
+                document.getElementById('wish-zone').classList.add('hidden');
+                document.getElementById('final-message-zone').classList.remove('hidden');
+                document.getElementById('cake-instruction').innerText = "✨ ميلاد سعيد! تم إرسال أمنيتكِ بنجاح! ✨";
+            } catch(e) { alert("حدث خطأ في المزامنة."); btn.disabled = false; }
+        }
+
+        window.runAway = function() {
+            const btn = document.getElementById('btn-no');
+            const container = document.getElementById('step-questions');
+            const maxX = container.clientWidth - btn.clientWidth - 20;
+            const maxY = container.clientHeight - btn.clientHeight - 80;
+            btn.style.left = Math.floor(Math.random() * maxX) + 'px'; 
+            btn.style.top = (Math.floor(Math.random() * maxY) + 40) + 'px';
+        }
+
+        function resetNoButton() {
+            const btn = document.getElementById('btn-no');
+            btn.style.position = 'absolute'; btn.style.left = '30px'; btn.style.top = 'auto'; btn.style.bottom = '20px';
+        }
+
+        window.triggerCelebration = function() {
+            const wrapper = document.getElementById('confetti-wrapper');
+            const colors = ['#dc2626', '#f43f5e', '#b91c1c', '#ef4444', '#ffffff'];
+            for (let i = 0; i < 40; i++) {
+                const conf = document.createElement('div');
+                conf.classList.add('confetti');
+                conf.style.left = Math.random() * 100 + 'vw';
+                conf.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                conf.style.transform = `scale(${Math.random() * 0.8 + 0.4})`;
+                wrapper.appendChild(conf);
+                setTimeout(() => conf.remove(), 3000);
+            }
+        }
+
+        window.openAdminPrompt = function() {
+            const pass = prompt("الرجاء إدخال الرمز السري للإدارة:");
+            if(pass === "531") { document.getElementById('admin-panel').classList.remove('hidden'); populateAdminFields(); }
+        }
+
+        window.closeAdmin = function() { document.getElementById('admin-panel').classList.add('hidden'); }
+
+        function populateAdminFields() {
+            document.getElementById('cfg-welcome-title').value = siteData.welcomeTitle;
+            document.getElementById('cfg-welcome-date').value = siteData.welcomeDate;
+            document.getElementById('cfg-cake-password').value = siteData.cakePassword;
+            document.getElementById('cfg-active-music').value = siteData.activeMusic;
+            document.getElementById('cfg-welcome-text').value = siteData.welcomeText;
+            document.getElementById('cfg-welcome-terms').value = siteData.welcomeTerms;
+            document.getElementById('cfg-love-percent').value = siteData.lovePercent;
+            document.getElementById('cfg-final-message').value = siteData.finalMessage;
+
+            const qArea = document.getElementById('admin-questions-list');
+            qArea.innerHTML = "";
+            if(siteData.questions) { Object.entries(siteData.questions).forEach(([id, q]) => { appendQuestionDOM(id, q); }); }
+        }
+
+        window.addNewQuestionField = function() {
+            const uniqueId = 'q_' + Date.now();
+            appendQuestionDOM(uniqueId, {text: '', type: 'binary', options: []});
+        }
+
+        function appendQuestionDOM(id, q) {
+            const qArea = document.getElementById('admin-questions-list');
+            const optionsStr = q.options ? q.options.join(',') : '';
+            const row = document.createElement('div');
+            row.className = "q-item bg-neutral-900 p-3 rounded-lg border border-neutral-700 space-y-2";
+            row.setAttribute('data-id', id);
+            row.innerHTML = `
+                <div class="flex gap-2">
+                    <input type="text" value="${q.text}" class="q-text w-full bg-neutral-800 border border-neutral-600 rounded p-1 text-xs text-white">
+                    <select class="q-type bg-slate-800 border border-slate-600 rounded p-1 text-xs text-white" onchange="toggleOptionsView(this)">
+                        <option value="binary" ${q.type==='binary'?'selected':''}>نعم/لا</option>
+                        <option value="multi" ${q.type==='multi'?'selected':''}>خيارات متعددة</option>
+                    </select>
+                    <button onclick="this.parentElement.parentElement.remove()" class="text-red-400 hover:text-red-500 text-xs px-2">حذف</button>
+                </div>
+                <div class="q-options-container ${q.type==='binary'?'hidden':''}">
+                    <input type="text" value="${optionsStr}" placeholder="الخيارات مفصولة بفاصلة , " class="q-options w-full bg-neutral-800 border border-neutral-600 rounded p-1 text-xs text-gray-300">
+                </div>`;
+            qArea.appendChild(row);
+        }
+
+        window.toggleOptionsView = function(selectElem) {
+            const container = selectElem.parentElement.nextElementSibling;
+            if(selectElem.value === 'multi') container.classList.remove('hidden'); else container.classList.add('hidden');
+        }
+
+        window.saveAdminSettings = async function() {
+            const btn = document.getElementById('btn-main-save');
+            btn.disabled = true;
+            try {
+                const updates = {
+                    welcomeTitle: document.getElementById('cfg-welcome-title').value,
+                    welcomeDate: document.getElementById('cfg-welcome-date').value,
+                    cakePassword: document.getElementById('cfg-cake-password').value || "احب علي",
+                    activeMusic: document.getElementById('cfg-active-music').value,
+                    welcomeText: document.getElementById('cfg-welcome-text').value,
+                    welcomeTerms: document.getElementById('cfg-welcome-terms').value,
+                    lovePercent: parseInt(document.getElementById('cfg-love-percent').value) || 100,
+                    finalMessage: document.getElementById('cfg-final-message').value,
+                    questions: {},
+                    user_wish: siteData.user_wish || ""
+                };
+                document.querySelectorAll('.q-item').forEach(item => {
+                    const id = item.getAttribute('data-id');
+                    const text = item.querySelector('.q-text').value;
+                    const type = item.querySelector('.q-type').value;
+                    let options = [];
+                    if(type === 'multi') {
+                        const rawOpt = item.querySelector('.q-options').value;
+                        options = rawOpt ? rawOpt.split(',').map(s => s.trim()) : [];
+                    }
+                    if(text) updates.questions[id] = { text, type, options };
+                });
+                await set(ref(db, 'birthday_site'), updates);
+                alert("🎉 تم الحفظ بنجاح!");
+                closeAdmin(); location.reload();
+            } catch (error) { alert("حدث خطأ أثناء الحفظ."); }
+            finally { btn.disabled = false; }
+        }
+
+        // الرسوم ثلاثية الأبعاد
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        container.appendChild(renderer.domElement);
+
+        const heartGeometry = new THREE.ConeGeometry(0.5, 1, 4);
+        const group = new THREE.Group();
+        for (let i = 0; i < 70; i++) {
+            const material = new THREE.MeshBasicMaterial({
+                color: Math.random() > 0.5 ? 0xdc2626 : 0xf43f5e,
+                wireframe: true, transparent: true, opacity: Math.random() * 0.3 + 0.15
+            });
+            const mesh = new THREE.Mesh(heartGeometry, material);
+            mesh.position.set((Math.random() - 0.5) * 30, (Math.random() - 0.5) * 30, (Math.random() - 0.5) * 30);
+            mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+            mesh.scale.setScalar(Math.random() * 1.4 + 0.5);
+            group.add(mesh);
+        }
+        scene.add(group); camera.position.z = 15;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            group.rotation.y += 0.0012; group.rotation.x += 0.0006;
+            group.children.forEach(h => h.rotation.z += 0.008);
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
