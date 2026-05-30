@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ميلاد سعيد يا دنيتي</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;700&family=Reem_Kufi:wght@500&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: #0b0505;
+            overflow-x: hidden;
+            color: #fff;
+        }
+        .romantic-title {
+            font-family: 'Reem Kufi', sans-serif;
+        }
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 0, 0, 0.15);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        .btn-runaway {
+            position: absolute;
+            transition: all 0.2s ease;
+        }
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            animation: confettiFall 3s linear infinite;
+        }
+        @keyframes confettiFall {
+            0% { transform: translateY(-50px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+        /* حركة لهب الشموع */
+        .flame {
+            width: 12px;
+            height: 24px;
+            background: linear-gradient(to bottom, #ff9900, #ff3300);
+            border-radius: 50% 50% 20% 20%;
+            animation: flicker 0.1s ease-in-out infinite alternate;
+            box-shadow: 0 0 10px #ff9900;
+        }
+        @keyframes flicker {
+            0% { transform: scale(1); opacity: 0.9; }
+            100% { transform: scale(1.1) skewX(2deg); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="relative min-h-screen flex flex-col justify-between">
+
+    <div id="canvas-container"></div>
+    <div id="confetti-wrapper" class="absolute inset-0 pointer-events-none z-50 overflow-hidden"></div>
+
+    <button onclick="openAdminPrompt()" class="absolute top-4 left-4 z-50 text-white/20 hover:text-red-500 transition">
+        <i class="fas fa-lock text-xl"></i>
+    </button>
+
+    <audio id="bg-music" loop></audio>
+
+    <main class="flex-grow flex items-center justify-center p-4 z-10">
+        
+        <div id="step-welcome" class="glass-card max-w-md w-full rounded-2xl p-8 text-center hidden">
+            <h1 id="view-welcome-title" class="romantic-title text-3xl font-bold text-red-500 mb-4">❤️ أهلاً بكِ يا أميرتي ❤️</h1>
+            <p id="view-welcome-text" class="text-gray-300 mb-6 leading-relaxed">هذا المكان صُنع بحب خصيصاً لكِ في يوم ميلادكِ.</p>
+            <div class="bg-black/30 p-4 rounded-xl text-right text-sm text-gray-400 mb-6 max-h-40 overflow-y-auto border border-red-500/10">
+                <p id="view-welcome-terms">شروط الدخول الافتراضية...</p>
+            </div>
+            <button onclick="nextStep(2)" class="w-full bg-gradient-to-r from-red-600 to-rose-700 hover:scale-105 transition py-3 rounded-xl font-bold text-lg shadow-lg shadow-red-600/40">
+                أوافق وأتحمل المسؤولية 😍
+            </button>
+        </div>
+
+        <div id="step-questions" class="glass-card max-w-md w-full rounded-2xl p-8 text-center relative hidden min-h-[360px] flex flex-col justify-between">
+            <div>
+                <span class="text-xs font-bold uppercase bg-red-500/20 text-red-400 px-3 py-1 rounded-full">مرحلة الأسئلة</span>
+                <h2 id="question-text" class="text-2xl font-bold mt-4 mb-8">جاري تحميل السؤال...</h2>
+            </div>
+            
+            <div id="binary-answers" class="relative h-28 flex items-center justify-around w-full">
+                <button onclick="handleAnswer(true)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-3 rounded-xl transition text-lg shadow-lg">نعم</button>
+                <button id="btn-no" onmouseover="runAway()" onclick="runAway()" class="bg-red-600 text-white font-bold px-8 py-3 rounded-xl text-lg shadow-lg btn-runaway">لا</button>
+            </div>
+
+            <div id="multiple-answers" class="grid grid-cols-1 gap-3 hidden my-4">
+                </div>
+        </div>
+
+        <div id="step-choices" class="glass-card max-w-2xl w-full rounded-2xl p-8 text-center hidden">
+            <span class="text-xs font-bold uppercase bg-red-500/20 text-red-400 px-3 py-1 rounded-full">لو خيروكِ 🤔</span>
+            <h2 class="text-2xl font-bold mt-4 mb-6 text-red-400">اختاري الصورة الأقرب لقلبكِ:</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div onclick="handleChoiceSelect()" class="cursor-pointer group relative overflow-hidden rounded-xl border-2 border-transparent hover:border-red-500 transition bg-black/40">
+                    <img id="choice-img-1" src="https://via.placeholder.com/400x300?text=Image+1" class="w-full h-48 object-cover group-hover:scale-105 transition duration-300">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent flex items-end justify-center p-4">
+                        <span class="text-base font-bold text-gray-200">الخيار الأول</span>
+                    </div>
+                </div>
+                <div onclick="handleChoiceSelect()" class="cursor-pointer group relative overflow-hidden rounded-xl border-2 border-transparent hover:border-red-500 transition bg-black/40">
+                    <img id="choice-img-2" src="https://via.placeholder.com/400x300?text=Image+2" class="w-full h-48 object-cover group-hover:scale-105 transition duration-300">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent flex items-end justify-center p-4">
+                        <span class="text-base font-bold text-gray-200">الخيار الثاني</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="step-lovemeter" class="glass-card max-w-md w-full rounded-2xl p-8 text-center hidden">
+            <h2 class="romantic-title text-3xl font-bold text-red-500 mb-6">مقياس نبضات حبكِ لي 💓</h2>
+            <div class="relative pt-1">
+                <div class="flex mb-2 items-center justify-between">
+                    <div><span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-red-600 bg-red-950">النسبة الحالية</span></div>
+                    <div class="text-right"><span id="love-percent-text" class="text-sm font-semibold inline-block text-red-500">0%</span></div>
+                </div>
+                <div class="overflow-hidden h-6 text-xs flex rounded-full bg-red-950">
+                    <div id="love-bar" style="width:0%" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-to-r from-red-500 to-rose-600 transition-all duration-1000 font-bold"></div>
+                </div>
+            </div>
+            <p class="text-xs text-gray-400 mt-4 italic">جاري مواءمة النبضات الشريانية للقلب...</p>
+            <button onclick="triggerCelebration(); nextStep('cake');" class="mt-8 bg-gradient-to-r from-red-600 to-rose-600 text-white font-bold px-8 py-2 rounded-xl transition text-sm shadow-md">الانتقال للمفاجأة الكبرى 🎂</button>
+        </div>
+
+        <div id="step-cake" class="glass-card max-w-md w-full rounded-2xl p-8 text-center hidden flex flex-col items-center">
+            <span class="text-xs font-bold uppercase bg-red-500/20 text-red-400 px-3 py-1 rounded-full mb-4">حان وقت الأمنية 🎂</span>
+            <h2 id="cake-instruction" class="text-2xl font-bold text-red-400 mb-6">اتمني أمنية واضغطي على الشموع لإطفائها وتقطيع الكعكة!</h2>
+            
+            <div id="interactive-cake" onclick="blowCandlesAndCut()" class="cursor-pointer relative w-64 h-64 flex flex-col justify-end items-center bg-black/20 rounded-full p-4 hover:scale-105 transition duration-300">
+                <div id="candles-group" class="flex gap-4 mb-1 z-20">
+                    <div class="w-3 h-12 bg-blue-400 rounded-t relative"><div class="flame absolute -top-5 left-[-4px]"></div></div>
+                    <div class="w-3 h-14 bg-yellow-400 rounded-t relative"><div class="flame absolute -top-5 left-[-4px]"></div></div>
+                    <div class="w-3 h-12 bg-purple-400 rounded-t relative"><div class="flame absolute -top-5 left-[-4px]"></div></div>
+                </div>
+                <div class="w-48 h-12 bg-red-200 rounded-t-xl border-b-4 border-red-300 z-10 flex items-center justify-center text-red-800 font-bold text-xs">🍓 كريمة الفراولة</div>
+                <div class="w-56 h-14 bg-amber-900 rounded-t-md border-b-4 border-amber-950 z-10 flex items-center justify-center text-amber-200 font-bold text-xs">🍫 شوكولاتة فاخرة</div>
+                <div id="cake-knife" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-5xl text-white/0 transition duration-500 pointer-events-none z-30">
+                    <i class="fas fa-birthday-cake text-red-500"></i>
+                </div>
+            </div>
+
+            <button id="btn-to-final" onclick="nextStep(5)" class="mt-8 bg-white/10 hover:bg-red-600 px-6 py-2 rounded-xl transition text-sm hidden">رؤية ألبوم الصور والمعايدة ✨</button>
+        </div>
+
+        <div id="step-final" class="glass-card max-w-3xl w-full rounded-2xl p-8 text-center hidden">
+            <h1 class="romantic-title text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-rose-500 to-red-600 animate-pulse mb-6">✨ كل عام وأنتِ بمليار خير يا دنيتي ✨</h1>
+            
+            <p id="view-final-message" class="text-base md:text-lg text-gray-200 max-w-xl mx-auto leading-relaxed bg-black/40 p-6 rounded-2xl border border-red-500/20 mb-8">
+                نص التهنئة...
+            </p>
+
+            <h3 class="text-lg font-bold mb-4 text-red-400 text-right"><i class="fas fa-images ml-2"></i>ألبوم ذكرياتنا المرفوع من الاستوديو:</h3>
+            <div id="gallery-container" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                </div>
+        </div>
+
+    </main>
+
+    <div id="admin-panel" class="fixed inset-0 bg-black/95 z-50 overflow-y-auto p-4 md:p-8 hidden">
+        <div class="max-w-4xl mx-auto bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-neutral-800 pb-4 mb-6">
+                <h2 class="text-2xl font-bold text-red-500 flex items-center gap-2"><i class="fas fa-cogs"></i> لوحة الإدارة والتحكم الكامل بالداتا حياً</h2>
+                <button onclick="closeAdmin()" class="bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white px-4 py-2 rounded-xl transition">إغلاق</button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-4 bg-neutral-800/40 p-4 rounded-xl border border-neutral-700">
+                    <h3 class="font-bold text-red-400 border-b border-neutral-700 pb-2">1. إعدادات الواجهة والنصوص</h3>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">عنوان الترحيب</label>
+                        <input type="text" id="cfg-welcome-title" class="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-2 text-white text-sm focus:outline-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">نص الترحيب بالكامل</label>
+                        <textarea id="cfg-welcome-text" rows="2" class="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-2 text-white text-sm focus:outline-red-500"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">الشروط والقوانين المستهدفة</label>
+                        <textarea id="cfg-welcome-terms" rows="2" class="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-2 text-white text-sm focus:outline-red-500"></textarea>
+                    </div>
+                    <hr class="border-neutral-700">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">مقياس نسبة الحب الثابتة (0 - 100)</label>
+                        <input type="number" id="cfg-love-percent" class="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-2 text-white text-sm focus:outline-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">رسالة المعايدة النهائية</label>
+                        <textarea id="cfg-final-message" rows="3" class="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-2 text-white text-sm focus:outline-red-500"></textarea>
+                    </div>
+                </div>
+
+                <div class="space-y-4 bg-neutral-800/40 p-4 rounded-xl border border-neutral-700">
+                    <h3 class="font-bold text-red-400 border-b border-neutral-700 pb-2">2. رفع ملفات الوسائط (مباشرة)</h3>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">ملف الأغنية الرومانسية (صيغة صوتية من جهازك)</label>
+                        <input type="file" id="cfg-song-file" accept="audio/*" class="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:bg-red-600/20 file:text-red-400 hover:file:bg-red-600/30 file:border-0">
+                    </div>
+                    <hr class="border-neutral-700">
+                    <p class="text-xs text-red-400 font-bold">صور مرحلة "لو خيروكِ":</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] text-gray-500">الصورة الأولى</label>
+                            <input type="file" id="cfg-choice1-file" accept="image/*" class="text-xs w-full">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-gray-500">الصورة الثانية</label>
+                            <input type="file" id="cfg-choice2-file" accept="image/*" class="text-xs w-full">
+                        </div>
+                    </div>
+                    <hr class="border-neutral-700">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">ألبوم ذكريات الاستوديو (يمكنك تحديد ورفع عشرات الصور دفعة واحدة)</label>
+                        <input type="file" id="cfg-gallery-files" accept="image/*" multiple class="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:bg-rose-600/20 file:text-rose-400 hover:file:bg-rose-600/30 file:border-0">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 bg-neutral-800/40 p-4 rounded-xl border border-neutral-700">
+                <h3 class="font-bold text-red-400 border-b border-neutral-700 pb-2 mb-3">3. بنك الأسئلة المخصصة (يمكنك إضافة أي عدد تريده)</h3>
+                <div id="admin-questions-list" class="space-y-4 max-h-72 overflow-y-auto mb-4 p-1">
+                    </div>
+                <button onclick="addNewQuestionField()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2 rounded-lg transition"><i class="fas fa-plus ml-1"></i> إضافة سؤال جديد للبنك</button>
+            </div>
+
+            <div class="mt-6 border-t border-neutral-800 pt-4 flex justify-end">
+                <button id="btn-main-save" onclick="saveAdminSettings()" class="bg-gradient-to-r from-emerald-500 to-green-600 hover:scale-105 text-white font-bold px-8 py-3 rounded-xl shadow-lg transition">
+                    <i class="fas fa-save ml-2"></i> حفظ ومزامنة الداتا وتأكيد الرفع
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="w-full text-center p-4 text-xs text-white/10 z-10">
+        صُنع بحب بنبضات قلب رقمية حمراء © 2026
+    </footer>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+
+        // إعدادات البوابة المباشرة التابعة لك
+        const firebaseConfig = {
+            apiKey: "AIzaSyBVgnHzkZppi0FhpuyVRK_x0XMn4LViTQ0",
+            authDomain: "alfuars-seah-fb320.firebaseapp.com",
+            databaseURL: "https://alfuars-seah-fb320-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "alfuars-seah-fb320",
+            storageBucket: "alfuars-seah-fb320.firebasestorage.app",
+            messagingSenderId: "186976497709",
+            appId: "1:186976497709:web:08220f2dcad4c6180408a4",
+            measurementId: "G-9HPQN41DQB"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const storage = getStorage(app);
+
+        let currentStep = 1;
+        let siteData = { questions: {}, gallery: {} };
+        let currentQuestionIndex = 0;
+
+        // مزامنة الداتا الفورية واستقبال التحديثات من لوحة الإدارة تلقائياً
+        onValue(ref(db, 'birthday_site'), (snapshot) => {
+            const data = snapshot.val();
+            if(data) {
+                siteData = data;
+                if(!siteData.questions) siteData.questions = {};
+                if(!siteData.gallery) siteData.gallery = {};
+                applyDataToUI();
+            }
+        });
+
+        function applyDataToUI() {
+            document.getElementById('view-welcome-title').innerText = siteData.welcomeTitle || "❤️ أهلاً بكِ يا أميرتي ❤️";
+            document.getElementById('view-welcome-text').innerText = siteData.welcomeText || "";
+            document.getElementById('view-welcome-terms').innerHTML = (siteData.welcomeTerms || "").replace(/\n/g, '<br>');
+            
+            if(siteData.songUrl) {
+                document.getElementById('bg-music').src = siteData.songUrl;
+            }
+
+            // تطبيق صور لو خيروك من السيرفر بنجاح
+            document.getElementById('choice-img-1').src = siteData.choiceImg1 || "https://via.placeholder.com/400x300?text=Image+1";
+            document.getElementById('choice-img-2').src = siteData.choiceImg2 || "https://via.placeholder.com/400x300?text=Image+2";
+
+            document.getElementById('view-final-message').innerText = siteData.finalMessage || "";
+
+            const galleryBox = document.getElementById('gallery-container');
+            galleryBox.innerHTML = "";
+            if(siteData.gallery) {
+                Object.values(siteData.gallery).forEach(url => {
+                    galleryBox.innerHTML += `
+                        <div class="overflow-hidden rounded-xl border border-white/5 shadow-md bg-black/20">
+                            <img src="${url}" class="w-full h-40 object-cover hover:scale-110 transition duration-500">
+                        </div>`;
+                });
+            }
+            
+            showStep(currentStep);
+        }
+
+        window.nextStep = function(step) {
+            currentStep = step;
+            showStep(step);
+            if(step === 2) {
+                const audio = document.getElementById('bg-music');
+                if(audio.src) audio.play().catch(e => console.log("Interaction required for audio"));
+                currentQuestionIndex = 0;
+                loadQuestion();
+            }
+            if(step === 4) {
+                setTimeout(() => {
+                    const targetPercent = siteData.lovePercent || 100;
+                    document.getElementById('love-bar').style.width = targetPercent + '%';
+                    document.getElementById('love-bar').innerText = targetPercent + '%';
+                    document.getElementById('love-percent-text').innerText = targetPercent + '%';
+                }, 200);
+            }
+        }
+
+        function showStep(step) {
+            document.querySelectorAll('main > div').forEach(div => div.classList.add('hidden'));
+            if(step === 1) document.getElementById('step-welcome').classList.remove('hidden');
+            if(step === 2) document.getElementById('step-questions').classList.remove('hidden');
+            if(step === 3) document.getElementById('step-choices').classList.remove('hidden');
+            if(step === 4) document.getElementById('step-lovemeter').classList.remove('hidden');
+            if(step === 'cake') document.getElementById('step-cake').classList.remove('hidden');
+            if(step === 5) document.getElementById('step-final').classList.remove('hidden');
+        }
+
+        function loadQuestion() {
+            const qList = siteData.questions ? Object.values(siteData.questions) : [];
+            if(qList.length === 0 || currentQuestionIndex >= qList.length) {
+                nextStep(3); // الانتقال لمرحلة لو خيروك فور انتهاء الأسئلة اللانهائية بنجاح
+                return;
+            }
+
+            const currentQ = qList[currentQuestionIndex];
+            document.getElementById('question-text').innerText = currentQ.text;
+
+            const binaryArea = document.getElementById('binary-answers');
+            const multiArea = document.getElementById('multiple-answers');
+
+            if(currentQ.type === 'binary') {
+                binaryArea.classList.remove('hidden');
+                multiArea.classList.add('hidden');
+                resetNoButton();
+            } else {
+                binaryArea.classList.add('hidden');
+                multiArea.classList.remove('hidden');
+                multiArea.innerHTML = "";
+                if(currentQ.options) {
+                    currentQ.options.forEach(opt => {
+                        multiArea.innerHTML += `
+                            <button onclick="handleAnswer(true)" class="w-full bg-white/5 hover:bg-red-600/40 text-right p-3 rounded-xl transition text-sm border border-white/5 flex justify-between items-center group">
+                                <span>${opt}</span> <i class="fas fa-heart text-red-500 opacity-0 group-hover:opacity-100 transition"></i>
+                            </button>`;
+                    });
+                }
+            }
+        }
+
+        window.handleAnswer = function(isCorrect) {
+            if(isCorrect) {
+                triggerCelebration();
+                currentQuestionIndex++;
+                setTimeout(() => {
+                    loadQuestion();
+                }, 500);
+            }
+        }
+
+        window.handleChoiceSelect = function() {
+            triggerCelebration();
+            setTimeout(() => {
+                nextStep(4);
+            }, 600);
+        }
+
+        // إطفاء الشموع وتقطيع الكعكة الحركي والتفاعلي
+        window.blowCandlesAndCut = function() {
+            // 1. إطفاء لهب الشموع
+            document.querySelectorAll('.flame').forEach(f => f.style.display = 'none');
+            document.getElementById('cake-instruction').innerText = "🎉 واو! تم إطفاء الشموع وتقطيع الكعكة بنجاح! ميلاد سعيد!";
+            
+            // 2. إظهار تأثير السكين/التقطيع والاحتفال المكثف
+            document.getElementById('cake-knife').style.color = 'rgba(239, 68, 68, 1)';
+            triggerCelebration();
+            setTimeout(triggerCelebration, 400);
+            setTimeout(triggerCelebration, 800);
+
+            // 3. إظهار زر الانتقال للواجهة الختامية والألبوم
+            document.getElementById('btn-to-final').classList.remove('hidden');
+        }
+
+        window.runAway = function() {
+            const btn = document.getElementById('btn-no');
+            const container = document.getElementById('step-questions');
+            const maxX = container.clientWidth - btn.clientWidth - 20;
+            const maxY = container.clientHeight - btn.clientHeight - 80;
+            
+            const randomX = Math.floor(Math.random() * maxX);
+            const randomY = Math.floor(Math.random() * maxY) + 40;
+
+            btn.style.left = randomX + 'px';
+            btn.style.top = randomY + 'px';
+        }
+
+        function resetNoButton() {
+            const btn = document.getElementById('btn-no');
+            btn.style.position = 'absolute';
+            btn.style.left = '30px';
+            btn.style.top = 'auto';
+            btn.style.bottom = '20px';
+        }
+
+        window.triggerCelebration = function() {
+            const wrapper = document.getElementById('confetti-wrapper');
+            const colors = ['#dc2626', '#f43f5e', '#b91c1c', '#ef4444', '#ffffff'];
+            for (let i = 0; i < 40; i++) {
+                const conf = document.createElement('div');
+                conf.classList.add('confetti');
+                conf.style.left = Math.random() * 100 + 'vw';
+                conf.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                conf.style.transform = `scale(${Math.random() * 0.8 + 0.4})`;
+                conf.style.animationDelay = Math.random() * 0.5 + 's';
+                wrapper.appendChild(conf);
+                setTimeout(() => conf.remove(), 3000);
+            }
+        }
+
+        // ==========================================
+        // شيفرة لوحة التحكم والإدارة المصلحة والمستقرة
+        // ==========================================
+        window.openAdminPrompt = function() {
+            const pass = prompt("الرجاء إدخال الرمز السري المشفر للدخول للإدارة:");
+            if(pass === "531") {
+                document.getElementById('admin-panel').classList.remove('hidden');
+                populateAdminFields();
+            } else if(pass !== null) {
+                alert("الرمز السري خاطئ! الوصول مرفوض.");
+            }
+        }
+
+        window.closeAdmin = function() {
+            document.getElementById('admin-panel').classList.add('hidden');
+        }
+
+        function populateAdminFields() {
+            document.getElementById('cfg-welcome-title').value = siteData.welcomeTitle || "";
+            document.getElementById('cfg-welcome-text').value = siteData.welcomeText || "";
+            document.getElementById('cfg-welcome-terms').value = siteData.welcomeTerms || "";
+            document.getElementById('cfg-love-percent').value = siteData.lovePercent || 100;
+            document.getElementById('cfg-final-message').value = siteData.finalMessage || "";
+
+            const qArea = document.getElementById('admin-questions-list');
+            qArea.innerHTML = "";
+            if(siteData.questions) {
+                Object.entries(siteData.questions).forEach(([id, q]) => {
+                    appendQuestionDOM(id, q);
+                });
+            }
+        }
+
+        window.addNewQuestionField = function() {
+            const uniqueId = 'q_' + Date.now() + '_' + Math.floor(Math.random()*1000);
+            appendQuestionDOM(uniqueId, {text: '', type: 'binary', options: []});
+        }
+
+        function appendQuestionDOM(id, q) {
+            const qArea = document.getElementById('admin-questions-list');
+            const optionsStr = q.options ? q.options.join(',') : '';
+            const row = document.createElement('div');
+            row.className = "q-item bg-neutral-900 p-3 rounded-lg border border-neutral-700 space-y-2";
+            row.setAttribute('data-id', id);
+            row.innerHTML = `
+                <div class="flex gap-2">
+                    <input type="text" value="${q.text}" placeholder="نص السؤال الجديد للبنك" class="q-text w-full bg-neutral-800 border border-neutral-600 rounded p-1 text-xs text-white">
+                    <select class="q-type bg-neutral-800 border border-neutral-600 rounded p-1 text-xs text-white" onchange="toggleOptionsView(this)">
+                        <option value="binary" ${q.type==='binary'?'selected':''}>نعم/لا</option>
+                        <option value="multi" ${q.type==='multi'?'selected':''}>خيارات متعددة</option>
+                    </select>
+                    <button onclick="this.parentElement.parentElement.remove()" class="text-red-400 hover:text-red-500 text-xs px-2">حذف</button>
+                </div>
+                <div class="q-options-container ${q.type==='binary'?'hidden':''}">
+                    <input type="text" value="${optionsStr}" placeholder="اكتب الاختيارات مفصولة بفاصلة , مثل: خيار أول, خيار ثاني" class="q-options w-full bg-neutral-800 border border-neutral-600 rounded p-1 text-xs text-gray-300">
+                </div>`;
+            qArea.appendChild(row);
+        }
+
+        window.toggleOptionsView = function(selectElem) {
+            const container = selectElem.parentElement.nextElementSibling;
+            if(selectElem.value === 'multi') container.classList.remove('hidden');
+            else container.classList.add('hidden');
+        }
+
+        // الحفظ المصلح والمحمي بالكامل لرفع الداتا والملفات دفعة واحدة
+        window.saveAdminSettings = async function() {
+            const btn = document.getElementById('btn-main-save');
+            btn.disabled = true;
+            btn.innerText = "جاري رفع ومزامنة كافة الملفات حياً بالاستوديو...";
+
+            try {
+                const updates = {
+                    welcomeTitle: document.getElementById('cfg-welcome-title').value,
+                    welcomeText: document.getElementById('cfg-welcome-text').value,
+                    welcomeTerms: document.getElementById('cfg-welcome-terms').value,
+                    lovePercent: parseInt(document.getElementById('cfg-love-percent').value) || 100,
+                    finalMessage: document.getElementById('cfg-final-message').value,
+                    songUrl: siteData.songUrl || "",
+                    choiceImg1: siteData.choiceImg1 || "",
+                    choiceImg2: siteData.choiceImg2 || "",
+                    gallery: siteData.gallery || {},
+                    questions: {}
+                };
+
+                // 1. رفع الأغنية الصوتية المحددة
+                const songFile = document.getElementById('cfg-song-file').files[0];
+                if(songFile) {
+                    const songRef = sRef(storage, `assets/music_${Date.now()}`);
+                    await uploadBytes(songRef, songFile);
+                    updates.songUrl = await getDownloadURL(songRef);
+                }
+
+                // 2. رفع صور لو خيروكِ بنجاح وثبات
+                const c1File = document.getElementById('cfg-choice1-file').files[0];
+                if(c1File) {
+                    const c1Ref = sRef(storage, `assets/c1_${Date.now()}`);
+                    await uploadBytes(c1Ref, c1File);
+                    updates.choiceImg1 = await getDownloadURL(c1Ref);
+                }
+                const c2File = document.getElementById('cfg-choice2-file').files[0];
+                if(c2File) {
+                    const c2Ref = sRef(storage, `assets/c2_${Date.now()}`);
+                    await uploadBytes(c2Ref, c2File);
+                    updates.choiceImg2 = await getDownloadURL(c2Ref);
+                }
+
+                // 3. معالجة ورفع ألبوم صور الاستوديو المتعددة معاً
+                const galleryFiles = document.getElementById('cfg-gallery-files').files;
+                if(galleryFiles.length > 0) {
+                    for(let i=0; i<galleryFiles.length; i++) {
+                        const file = galleryFiles[i];
+                        const gRef = sRef(storage, `gallery/img_${Date.now()}_${i}`);
+                        await uploadBytes(gRef, file);
+                        const url = await getDownloadURL(gRef);
+                        const gId = 'img_' + Date.now() + '_' + i;
+                        updates.gallery[gId] = url;
+                    }
+                }
+
+                // 4. بناء كائن مصفوفة الأسئلة اللانهائية
+                document.querySelectorAll('.q-item').forEach(item => {
+                    const id = item.getAttribute('data-id');
+                    const text = item.querySelector('.q-text').value;
+                    const type = item.querySelector('.q-type').value;
+                    let options = [];
+                    if(type === 'multi') {
+                        const rawOpt = item.querySelector('.q-options').value;
+                        options = rawOpt ? rawOpt.split(',').map(s => s.trim()) : [];
+                    }
+                    if(text) {
+                        updates.questions[id] = { text, type, options };
+                    }
+                });
+
+                // المزامنة الحية المباشرة مع Realtime Database
+                await set(ref(db, 'birthday_site'), updates);
+                alert("🎉 تم الحفظ والمزامنة السحابية بنجاح! تحدّث الموقع بالكامل باللون الأحمر والأسئلة اللانهائية.");
+                closeAdmin();
+                location.reload();
+
+            } catch (error) {
+                console.error("Firebase Error: ", error);
+                alert("حدثت مشكلة أثناء الرفع، يرجى التحقق من قواعد الحماية المفتوحة (Rules) في الكونسول.");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fas fa-save ml-2"></i> حفظ ومزامنة الداتا وتأكيد الرفع`;
+            }
+        }
+
+        // ==========================================
+        // محرك الرسوم ثلاثية الأبعاد المطور باللون الأحمر التفاعلي
+        // ==========================================
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        container.appendChild(renderer.domElement);
+
+        const heartGeometry = new THREE.ConeGeometry(0.5, 1, 4);
+        const group = new THREE.Group();
+
+        for (let i = 0; i < 70; i++) {
+            const material = new THREE.MeshBasicMaterial({
+                color: Math.random() > 0.5 ? 0xdc2626 : 0xf43f5e, // تحويل الألوان تماماً إلى درجات الأحمر والروز الرومانسية
+                wireframe: true,
+                transparent: true,
+                opacity: Math.random() * 0.4 + 0.15
+            });
+            const mesh = new THREE.Mesh(heartGeometry, material);
+            mesh.position.set((Math.random() - 0.5) * 30, (Math.random() - 0.5) * 30, (Math.random() - 0.5) * 30);
+            mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+            mesh.scale.setScalar(Math.random() * 1.5 + 0.5);
+            group.add(mesh);
+        }
+        scene.add(group);
+        camera.position.z = 15;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            group.rotation.y += 0.0012;
+            group.rotation.x += 0.0006;
+            group.children.forEach(h => h.rotation.z += 0.008);
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+</html>
